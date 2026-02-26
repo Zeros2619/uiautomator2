@@ -22,7 +22,23 @@ def test_exists(app: u2.Device):
     assert app(text='Addition').exists(timeout=.1)
     assert not app(text='should-not-exists').exists
     assert not app(text='should-not-exists').exists(timeout=.1)
-    
+
+
+def test_exists2(app: u2.Device):
+    # New writing style
+    addition_label = Selector(text="Addition")
+    # Use selector as positional argument
+    assert app(addition_label).exists
+    # Use selector as keyword argument
+    assert app(selector=addition_label).exists(timeout=.1)
+
+    not_exist_label = Selector(text="should-not-exists")
+    assert not app(not_exist_label).exists
+    assert not app(selector=not_exist_label).exists(timeout=.1)
+
+    # Use selector as parameter for other methods
+    assert app(addition_label).right(not_exist_label) is None
+
 
 def test_selector_info(app: u2.Device):
     _info = app(text="Addition").info
