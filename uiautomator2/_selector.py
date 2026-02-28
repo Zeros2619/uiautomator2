@@ -43,7 +43,7 @@ class Selector(dict):
     }
     __mask, __childOrSibling, __childOrSiblingSelector = "mask", "childOrSibling", "childOrSiblingSelector"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, selector=None, **kwargs):
         super().__init__()
 
         # Initialize internal fields (bypass __setitem__ to avoid mask update)
@@ -52,13 +52,9 @@ class Selector(dict):
         dict.__setitem__(self, self.__childOrSiblingSelector, [])
 
         # Extract source selector (support both positional and kwarg)
-        selector = None
-        if args and len(args) == 1:
-            selector = args[0]
-        if "selector" in kwargs:
-            selector = kwargs.pop("selector")
-
-        if selector and isinstance(selector, Selector):
+        if selector is not None:
+            if not isinstance(selector, Selector):
+                raise TypeError(f"selector must be Selector instance, got {type(selector).__name__}")
             self._copy_from(selector)
 
         # Apply remaining kwargs (triggers __setitem__ + mask update)
@@ -120,14 +116,14 @@ class Selector(dict):
         new_selector._copy_from(self)
         return new_selector
 
-    def child(self, *args, **kwargs):
+    def child(self, selector=None, **kwargs):
         self[self.__childOrSibling].append("child")
-        self[self.__childOrSiblingSelector].append(Selector(*args, **kwargs))
+        self[self.__childOrSiblingSelector].append(Selector(selector, **kwargs))
         return self
 
-    def sibling(self, *args, **kwargs):
+    def sibling(self, selector=None, **kwargs):
         self[self.__childOrSibling].append("sibling")
-        self[self.__childOrSiblingSelector].append(Selector(*args, **kwargs))
+        self[self.__childOrSiblingSelector].append(Selector(selector, **kwargs))
         return self
 
     def update_instance(self, i):
@@ -157,7 +153,7 @@ class UiObject(object):
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
-    
+
     def screenshot(self, display_id: Optional[int] = None) -> Image.Image:
         im = self.session.screenshot(display_id=display_id)
         return im.crop(self.bounds())
@@ -390,11 +386,11 @@ class UiObject(object):
         self.must_wait(timeout=timeout)
         return self.set_text(None)
 
-    def child(self, *args, **kwargs) -> 'UiObject':
-        return UiObject(self.session, self.selector.clone().child(*args, **kwargs))
+    def child(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
+        return UiObject(self.session, self.selector.clone().child(selector, **kwargs))
 
-    def sibling(self, *args, **kwargs) -> 'UiObject':
-        return UiObject(self.session, self.selector.clone().sibling(*args, **kwargs))
+    def sibling(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
+        return UiObject(self.session, self.selector.clone().sibling(selector, **kwargs))
 
     child_selector, from_parent = child, sibling
 
@@ -479,38 +475,38 @@ class UiObject(object):
 
         return Iter()
 
-    def right(self, *args, **kwargs) -> 'UiObject':
+    def right(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def onrightof(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect2["left"] - rect1["right"] if top < bottom else -1
 
-        return self.__view_beside(onrightof, *args, **kwargs)
+        return self.__view_beside(onrightof, selector, **kwargs)
 
-    def left(self, *args, **kwargs) -> 'UiObject':
+    def left(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def onleftof(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect1["left"] - rect2["right"] if top < bottom else -1
 
-        return self.__view_beside(onleftof, *args, **kwargs)
+        return self.__view_beside(onleftof, selector, **kwargs)
 
-    def up(self, *args, **kwargs) -> 'UiObject':
+    def up(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def above(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect1["top"] - rect2["bottom"] if left < right else -1
 
-        return self.__view_beside(above, *args, **kwargs)
+        return self.__view_beside(above, selector, **kwargs)
 
-    def down(self, *args, **kwargs) -> 'UiObject':
+    def down(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def under(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect2["top"] - rect1["bottom"] if left < right else -1
 
-        return self.__view_beside(under, *args, **kwargs)
+        return self.__view_beside(under, selector, **kwargs)
 
-    def __view_beside(self, onsideof, *args, **kwargs):
+    def __view_beside(self, onsideof, selector: Optional[Selector] = None, **kwargs):
         bounds = self.info["bounds"]
         min_dist, found = -1, None
-        for ui in UiObject(self.session, Selector(*args, **kwargs)):
+        for ui in UiObject(self.session, Selector(selector, **kwargs)):
             dist = onsideof(bounds, ui.info["bounds"])
             if dist >= 0 and (min_dist < 0 or dist < min_dist):
                 min_dist, found = dist, ui

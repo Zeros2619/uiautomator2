@@ -493,6 +493,7 @@ Selector is a handy mechanism to identify a specific UI object in the current wi
 # Select the object with text 'Clock' and its className is 'android.widget.TextView'
 d(text='Clock', className='android.widget.TextView')
 # Make selector reusable
+from uiautomator2 import Selector
 clock_icon = Selector(text='Clock', className='android.widget.TextView')
 # Use selector as positional argument
 d(clock_icon)

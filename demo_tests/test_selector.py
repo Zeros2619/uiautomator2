@@ -2,6 +2,7 @@
 # author: codeskyblue
 
 import time
+from copy import deepcopy
 
 import pytest
 
@@ -38,6 +39,43 @@ def test_exists2(app: u2.Device):
 
     # Use selector as parameter for other methods
     assert app(addition_label).right(not_exist_label) is None
+
+def test_selector_compatibility():
+    # 1. Basic creation
+    s1 = Selector(text="Login", clickable=True, instance=1)
+
+    # 2. positional copy
+    s2 = Selector(s1)
+
+    # 3. keyword copy
+    s3 = Selector(selector=s1)
+
+    # 4. Verify deep copy independence
+    s2["text"] = "Logout"
+    s2.child(text="Button")
+    assert s1["text"] == "Login"
+    assert s2["text"] == "Logout"
+
+    # 5. Test clone() method
+    s4 = s1.clone()
+    assert s4["text"] == "Login"
+
+    # 6. Test deepcopy
+    s5 = deepcopy(s1)
+    assert s5["text"] == "Login"
+
+    # 7. Chained calls for child / sibling
+    s6 = Selector(text="Parent")
+    s6.child(text="Child1")
+    s6.child(selector=s2)
+    s6.sibling(text="Sibling1")
+    s6.sibling(selector=s2)
+
+    # 9. Error handling test
+    try:
+        Selector("invalid")  # Pass non-Selector object
+    except TypeError as e:
+        print("9. Type error caught successfully:", e)
 
 
 def test_selector_info(app: u2.Device):
